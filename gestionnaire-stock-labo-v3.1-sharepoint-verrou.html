@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestionnaire de Stock V3.1 SharePoint - VERROU GLOBAL</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Work+Sans:wght@400;500;600;700&display=swap');
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --primary: #0a4d68;
+            --primary-light: #088395;
+            --accent: #05bfc4;
+            --danger: #dc2626;
+            --warning: #f59e0b;
+            --success: #10b981;
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+            --shadow: rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            font-family: 'Work Sans', sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+        
+        /* MODAL SITE OCCUPÉ */
+        .site-locked-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--danger) 0%, #b91c1c 100%);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10002;
+        }
+        
+        .site-locked-modal.active {
+            display: flex;
+        }
+        
+        .locked-card {
+            background: white;
+            padding: 3rem;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+        
+        .locked-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+        
+        .locked-title {
+            color: var(--danger);
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+        
+        .locked-info {
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+        
+        .locked-info strong {
+            color: var(--primary);
+        }
+        
+        .locked-message {
+            color: var(--text-secondary);
+            margin-top: 1.5rem;
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+        }
+        
+        .retry-btn {
+            background: var(--primary);
+            color: white;
+            padding: 0.875rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .retry-btn:hover {
+            background: var(--primary-light);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        /* MODAL INACTIVITÉ */
+        .inactivity-warning {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            z-index: 10003;
+            display: none;
+            min-width: 400px;
+            border: 3px solid var(--warning);
+        }
+        
+        .inactivity-warning.active {
+            display: block;
+            animation: shake 0.5s;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translate(-50%, -50%) rotate(0deg); }
+            25% { transform: translate(-50%, -50%) rotate(-2deg); }
+            75% { transform: translate(-50%, -50%) rotate(2deg); }
+        }
+        
+        .warning-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .warning-icon {
+            font-size: 2.5rem;
+        }
+        
+        .warning-title {
+            color: var(--warning);
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        
+        .warning-content {
+            margin-bottom: 1.5rem;
+        }
+        
+        .countdown {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--danger);
+            font-family: 'IBM Plex Mono', monospace;
+            text-align: center;
+            margin: 1rem 0;
+        }
+        
+        .im-here-btn {
+            width: 100%;
+            background: var(--success);
+            color: white;
+            padding: 1rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .im-here-btn:hover {
+            background: #059669;
+            transform: scale(1.02);
+        }
+        
+        /* Tous les autres styles de la V3 SharePoint... */
+        /* (Je vais copier les styles essentiels pour ne pas dépasser la limite) */
+        
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10001;
+            color: white;
+        }
+        
+        .loading-screen.hidden { display: none; }
+        
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Login et interface principale (styles de base) */
+        .login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); display: flex; justify-content: center; align-items: center; z-index: 10000; }
+        .login-screen.hidden { display: none; }
+        .login-card { background: white; padding: 3rem; border-radius: 16px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); max-width: 450px; width: 90%; }
+        .login-header { text-align: center; margin-bottom: 2rem; }
+        .login-header h1 { color: var(--primary); font-size: 1.75rem; margin-bottom: 0.5rem; }
+        .version-badge { display: inline-block; background: var(--success); color: white; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; margin-bottom: 1rem; }
+        .sharepoint-badge { display: inline-block; background: #0078d4; color: white; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; margin-left: 0.5rem; }
+        .lock-badge { display: inline-block; background: var(--danger); color: white; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; margin-left: 0.5rem; }
+        .login-form .form-group { margin-bottom: 1.5rem; }
+        .login-form label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary); }
+        .login-form input, .login-form select { width: 100%; padding: 0.75rem; border: 2px solid var(--border); border-radius: 8px; font-size: 1rem; transition: border-color 0.2s; }
+        .login-form input:focus, .login-form select:focus { outline: none; border-color: var(--primary); }
+        .login-btn { width: 100%; padding: 0.875rem; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .login-btn:hover { background: var(--primary-light); transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15); }
+        .login-error { background: #fee; color: var(--danger); padding: 0.75rem; border-radius: 6px; margin-top: 1rem; text-align: center; display: none; }
+        .login-error.show { display: block; }
+        .first-time-setup { background: var(--accent); color: white; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-size: 0.9rem; }
+        .first-time-setup h3 { margin-bottom: 0.5rem; font-size: 1rem; }
+        
+        .main-app { display: none; }
+        .main-app.active { display: block; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        
+        header { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); color: white; padding: 2rem; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 4px 6px var(--shadow); position: relative; }
+        h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; font-family: 'IBM Plex Mono', monospace; }
+        .subtitle { opacity: 0.9; font-size: 0.95rem; }
+        .user-badge { position: absolute; top: 2rem; right: 2rem; display: flex; align-items: center; gap: 1rem; background: rgba(255, 255, 255, 0.2); padding: 0.75rem 1.25rem; border-radius: 25px; backdrop-filter: blur(10px); }
+        .user-info { display: flex; flex-direction: column; align-items: flex-end; }
+        .user-name { font-weight: 600; font-size: 1rem; }
+        .user-role { font-size: 0.75rem; opacity: 0.8; text-transform: uppercase; }
+        .logout-btn { background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); color: white; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.875rem; transition: all 0.2s; }
+        .logout-btn:hover { background: rgba(255, 255, 255, 0.3); }
+        
+        .save-indicator { position: fixed; bottom: 2rem; right: 2rem; display: flex; align-items: center; gap: 0.5rem; background: white; padding: 0.75rem 1.25rem; border-radius: 25px; font-size: 0.875rem; box-shadow: 0 4px 12px var(--shadow); z-index: 1000; }
+        .save-indicator.syncing { background: #fef3c7; color: #92400e; }
+        .save-indicator.synced { background: #d1fae5; color: #065f46; }
+        .save-indicator.error { background: #fee2e2; color: #991b1b; }
+        .save-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
+        /* Styles simplifiés pour les onglets */
+        .nav-tabs { display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 2px solid var(--border); flex-wrap: wrap; }
+        .nav-tab { padding: 0.75rem 1.5rem; background: none; border: none; color: var(--text-secondary); font-weight: 500; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; font-size: 0.95rem; white-space: nowrap; }
+        .nav-tab:hover { color: var(--primary); }
+        .nav-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .card { background: var(--bg-card); border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 3px var(--shadow); margin-bottom: 1.5rem; }
+        .card-header { font-size: 1.25rem; font-weight: 600; margin-bottom: 1.5rem; color: var(--primary); display: flex; justify-content: space-between; align-items: center; }
+        .btn { padding: 0.625rem 1.25rem; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; transition: all 0.2s; font-size: 0.9375rem; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-light); transform: translateY(-1px); box-shadow: 0 4px 6px var(--shadow); }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-small { padding: 0.4rem 0.8rem; font-size: 0.875rem; }
+        .alert { padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+        .alert-info { background: #dbeafe; color: #1e40af; border-left: 4px solid #3b82f6; }
+        .alert-warning { background: #fef3c7; color: #92400e; border-left: 4px solid #f59e0b; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+        .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        label { font-size: 0.875rem; font-weight: 500; color: var(--text-primary); }
+        input, select { padding: 0.625rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9375rem; font-family: inherit; transition: border-color 0.2s; }
+        input:focus, select:focus { outline: none; border-color: var(--primary); }
+        table { width: 100%; border-collapse: collapse; }
+        thead { background: var(--bg-main); }
+        th { padding: 0.75rem; text-align: left; font-weight: 600; color: var(--text-primary); border-bottom: 2px solid var(--border); font-size: 0.875rem; }
+        td { padding: 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.9375rem; }
+        tbody tr:hover { background: var(--bg-main); }
+    </style>
+</head>
+<body>
+    <!-- MODAL SITE OCCUPÉ -->
+    <div class="site-locked-modal" id="site-locked-modal">
+        <div class="locked-card">
+            <div class="locked-icon">🔒</div>
+            <div class="locked-title">SITE OCCUPÉ</div>
+            <div class="locked-info">Utilisateur connecté : <strong id="locked-user">-</strong></div>
+            <div class="locked-info">Connecté depuis : <strong id="locked-duration">-</strong></div>
+            <div class="locked-message">
+                ⏱️ Veuillez patienter quelques minutes ou contactez l'utilisateur.<br>
+                Le système se libère automatiquement après 5 minutes d'inactivité.
+            </div>
+            <button class="retry-btn" onclick="retryConnection()">🔄 Réessayer</button>
+        </div>
+    </div>
+    
+    <!-- MODAL AVERTISSEMENT INACTIVITÉ -->
+    <div class="inactivity-warning" id="inactivity-warning">
+        <div class="warning-header">
+            <div class="warning-icon">⚠️</div>
+            <div class="warning-title">ALERTE INACTIVITÉ</div>
+        </div>
+        <div class="warning-content">
+            <p>Aucune activité détectée depuis un moment.</p>
+            <div class="countdown" id="warning-countdown">30</div>
+            <p style="text-align: center; color: var(--text-secondary);">Déconnexion automatique dans <strong id="seconds-left">30</strong> secondes</p>
+        </div>
+        <button class="im-here-btn" onclick="resetInactivityTimer()">⚡ JE SUIS LÀ !</button>
+    </div>
+    
+    <!-- ÉCRAN DE CHARGEMENT -->
+    <div class="loading-screen" id="loading-screen">
+        <div class="spinner"></div>
+        <p>Connexion à SharePoint...</p>
+        <p id="loading-status" style="margin-top: 1rem; opacity: 0.8; font-size: 0.9rem;">Initialisation...</p>
+    </div>
+    
+    <!-- ÉCRAN DE LOGIN -->
+    <div class="login-screen hidden" id="login-screen">
+        <div class="login-card">
+            <div class="login-header">
+                <h1>🔬 Gestionnaire de Stock</h1>
+                <span class="version-badge">V3.1 - COFRAC</span>
+                <span class="sharepoint-badge">📊 SharePoint</span>
+                <span class="lock-badge">🔒 Verrou</span>
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">
+                    Laboratoire d'Analyse d'Eau
+                </p>
+            </div>
+            
+            <div class="first-time-setup" id="first-time-notice" style="display: none;">
+                <h3>🎉 Première connexion !</h3>
+                <p>Créez votre compte administrateur pour commencer.</p>
+            </div>
+            
+            <form class="login-form" id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="login-username">Nom d'utilisateur</label>
+                    <input type="text" id="login-username" required autocomplete="username">
+                </div>
+                
+                <div class="form-group">
+                    <label for="login-password">Mot de passe</label>
+                    <input type="password" id="login-password" required autocomplete="current-password">
+                </div>
+                
+                <div class="form-group" id="role-group" style="display: none;">
+                    <label for="login-role">Rôle</label>
+                    <select id="login-role">
+                        <option value="ADMIN">Administrateur (tous droits)</option>
+                        <option value="TECHNICIEN">Technicien (consultation + consommation)</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="login-btn" id="login-btn-text">Se connecter</button>
+                
+                <div class="login-error" id="login-error"></div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- APPLICATION PRINCIPALE (structure minimale pour démo) -->
+    <div class="main-app" id="main-app">
+        <div class="container">
+            <header>
+                <h1>Gestionnaire de Stock V3.1 SharePoint 🔒</h1>
+                <div class="subtitle">Laboratoire d'Analyse d'Eau - Verrou Global Actif</div>
+                
+                <div class="user-badge">
+                    <div class="user-info">
+                        <div class="user-name" id="current-user-name">-</div>
+                        <div class="user-role" id="current-user-role">-</div>
+                    </div>
+                    <button class="logout-btn" onclick="logout()">🚪 Déconnexion</button>
+                </div>
+            </header>
+            
+            <div class="save-indicator" id="save-indicator">
+                <div class="save-dot"></div>
+                <span id="save-status">SharePoint connecté</span>
+            </div>
+            
+            <!-- NAVIGATION -->
+            <nav class="nav-tabs">
+                <button class="nav-tab active" onclick="switchTab('dashboard')">📊 Tableau de bord</button>
+                <button class="nav-tab" onclick="switchTab('settings')" id="settings-tab">⚙️ Paramètres</button>
+            </nav>
+            
+            <!-- TABLEAU DE BORD -->
+            <div class="tab-content active" id="dashboard">
+                <div class="card">
+                    <div class="card-header">🔒 Système de verrou global actif</div>
+                    <div class="alert alert-info">
+                        <strong>ℹ️ Mode exclusif activé :</strong><br>
+                        Une seule personne peut se connecter à la fois.<br>
+                        Déconnexion automatique après 5 minutes d'inactivité.<br>
+                        Historique conservé 30 jours avec export automatique mensuel.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- PARAMÈTRES (pour ADMIN) -->
+            <div class="tab-content" id="settings">
+                <div class="card">
+                    <div class="card-header">⚙️ Configuration du verrou</div>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="timeout-setting">Temps de déconnexion auto (minutes)</label>
+                            <input type="number" id="timeout-setting" value="5" min="1" max="60">
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="saveSettings()">💾 Enregistrer les paramètres</button>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">👤 Session active</div>
+                    <div id="active-session-info"></div>
+                    <button class="btn btn-danger" onclick="forceDisconnect()" style="margin-top: 1rem;">
+                        ⚠️ Forcer la déconnexion de l'utilisateur actuel
+                    </button>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">📊 Historique des sessions (30 derniers jours)</div>
+                    <button class="btn btn-primary" onclick="exportSessionHistory()" style="margin-bottom: 1rem;">
+                        📥 Exporter l'historique (CSV)
+                    </button>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Heure</th>
+                                <th>Utilisateur</th>
+                                <th>Durée</th>
+                                <th>Type déco</th>
+                            </tr>
+                        </thead>
+                        <tbody id="session-history-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============ CONFIGURATION SHAREPOINT ============
+        
+        const SHAREPOINT_CONFIG = {
+            siteUrl: "https://ingenieaux971.sharepoint.com/sites/LaboratoireAlise",
+            listsNames: {
+                users: 'LaboUtilisateurs',
+                products: 'LaboProduits',
+                movements: 'LaboMouvements',
+                samples: 'LaboEchantillons',
+                sessionActive: 'LaboSessionActive',      // NOUVELLE
+                parameters: 'LaboParametres',             // NOUVELLE
+                sessionHistory: 'LaboHistoriqueSessions' // NOUVELLE
+            }
+        };
+        
+        // ============ VARIABLES GLOBALES ============
+        let currentUser = null;
+        let users = [];
+        let sessionToken = null;
+        let inactivityTimer = null;
+        let warningTimer = null;
+        let activityCheckInterval = null;
+        let lastActivity = new Date();
+        let timeoutMinutes = 5; // Par défaut
+        
+        // ============ API SHAREPOINT (fonctions de base) ============
+        
+        async function getFormDigest() {
+            try {
+                const response = await fetch(SHAREPOINT_CONFIG.siteUrl + "/_api/contextinfo", {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json;odata=verbose' }
+                });
+                const data = await response.json();
+                return data.d.GetContextWebInformation.FormDigestValue;
+            } catch (error) {
+                console.error('Erreur FormDigest:', error);
+                throw error;
+            }
+        }
+        
+        async function getListItems(listName, select = null, filter = null, orderby = null) {
+            try {
+                let url = `${SHAREPOINT_CONFIG.siteUrl}/_api/web/lists/getbytitle('${listName}')/items?$top=5000`;
+                if (select) url += `&$select=${select}`;
+                if (filter) url += `&$filter=${filter}`;
+                if (orderby) url += `&$orderby=${orderby}`;
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json;odata=verbose' }
+                });
+                
+                if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
+                const data = await response.json();
+                return data.d.results;
+            } catch (error) {
+                console.error(`Erreur lecture ${listName}:`, error);
+                throw error;
+            }
+        }
+        
+        async function createListItem(listName, itemData) {
+            try {
+                const digest = await getFormDigest();
+                const response = await fetch(`${SHAREPOINT_CONFIG.siteUrl}/_api/web/lists/getbytitle('${listName}')/items`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json;odata=verbose',
+                        'Content-Type': 'application/json;odata=verbose',
+                        'X-RequestDigest': digest
+                    },
+                    body: JSON.stringify({
+                        '__metadata': { 'type': `SP.Data.${listName}ListItem` },
+                        ...itemData
+                    })
+                });
+                
+                if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
+                const data = await response.json();
+                return data.d;
+            } catch (error) {
+                console.error(`Erreur création dans ${listName}:`, error);
+                throw error;
+            }
+        }
+        
+        async function updateListItem(listName, itemId, itemData) {
+            try {
+                const digest = await getFormDigest();
+                const response = await fetch(`${SHAREPOINT_CONFIG.siteUrl}/_api/web/lists/getbytitle('${listName}')/items(${itemId})`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json;odata=verbose',
+                        'Content-Type': 'application/json;odata=verbose',
+                        'X-RequestDigest': digest,
+                        'IF-MATCH': '*',
+                        'X-HTTP-Method': 'MERGE'
+                    },
+                    body: JSON.stringify({
+                        '__metadata': { 'type': `SP.Data.${listName}ListItem` },
+                        ...itemData
+                    })
+                });
+                
+                if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
+                return true;
+            } catch (error) {
+                console.error(`Erreur mise à jour ${listName}:`, error);
+                throw error;
+            }
+        }
+        
+        async function deleteListItem(listName, itemId) {
+            try {
+                const digest = await getFormDigest();
+                const response = await fetch(`${SHAREPOINT_CONFIG.siteUrl}/_api/web/lists/getbytitle('${listName}')/items(${itemId})`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json;odata=verbose',
+                        'X-RequestDigest': digest,
+                        'IF-MATCH': '*',
+                        'X-HTTP-Method': 'DELETE'
+                    }
+                });
+                
+                if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
+                return true;
+            } catch (error) {
+                console.error(`Erreur suppression ${listName}:`, error);
+                throw error;
+            }
+        }
+        
+        // ============ GESTION DU VERROU GLOBAL ============
+        
+        async function checkIfSiteOccupied() {
+            try {
+                const sessions = await getListItems(SHAREPOINT_CONFIG.listsNames.sessionActive);
+                return sessions.length > 0 ? sessions[0] : null;
+            } catch (error) {
+                console.error('Erreur vérification session:', error);
+                return null;
+            }
+        }
+        
+        async function createSession(username) {
+            try {
+                sessionToken = generateUUID();
+                
+                const session = await createListItem(SHAREPOINT_CONFIG.listsNames.sessionActive, {
+                    Title: 'SessionEnCours',
+                    UtilisateurConnecte: username,
+                    DateHeureConnexion: new Date().toISOString(),
+                    DerniereActivite: new Date().toISOString(),
+                    SessionToken: sessionToken
+                });
+                
+                return session;
+            } catch (error) {
+                console.error('Erreur création session:', error);
+                throw error;
+            }
+        }
+        
+        async function updateLastActivity() {
+            try {
+                const sessions = await getListItems(SHAREPOINT_CONFIG.listsNames.sessionActive);
+                if (sessions.length > 0) {
+                    await updateListItem(SHAREPOINT_CONFIG.listsNames.sessionActive, sessions[0].ID, {
+                        DerniereActivite: new Date().toISOString()
+                    });
+                }
+            } catch (error) {
+                console.error('Erreur mise à jour activité:', error);
+            }
+        }
+        
+        async function endSession(type = 'Manuelle') {
+            try {
+                const sessions = await getListItems(SHAREPOINT_CONFIG.listsNames.sessionActive);
+                if (sessions.length > 0) {
+                    const session = sessions[0];
+                    
+                    // Calculer la durée
+                    const start = new Date(session.DateHeureConnexion);
+                    const end = new Date();
+                    const durationMin = Math.round((end - start) / 1000 / 60);
+                    
+                    // Enregistrer dans l'historique
+                    await createListItem(SHAREPOINT_CONFIG.listsNames.sessionHistory, {
+                        Title: session.UtilisateurConnecte,
+                        DateConnexion: session.DateHeureConnexion,
+                        DateDeconnexion: new Date().toISOString(),
+                        TypeDeconnexion: type,
+                        DureeSession: durationMin
+                    });
+                    
+                    // Supprimer la session active
+                    await deleteListItem(SHAREPOINT_CONFIG.listsNames.sessionActive, session.ID);
+                }
+            } catch (error) {
+                console.error('Erreur fin de session:', error);
+            }
+        }
+        
+        // ============ GESTION DE L'INACTIVITÉ ============
+        
+        function startInactivityMonitoring() {
+            // Écouter toutes les activités
+            ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'].forEach(event => {
+                document.addEventListener(event, recordActivity);
+            });
+            
+            // Vérifier l'inactivité toutes les 10 secondes
+            activityCheckInterval = setInterval(checkInactivity, 10000);
+        }
+        
+        function recordActivity() {
+            lastActivity = new Date();
+            
+            // Cacher l'avertissement s'il est affiché
+            document.getElementById('inactivity-warning').classList.remove('active');
+            
+            // Mettre à jour dans SharePoint toutes les 30 secondes max
+            if (!window.lastSharePointUpdate || (new Date() - window.lastSharePointUpdate) > 30000) {
+                updateLastActivity();
+                window.lastSharePointUpdate = new Date();
+            }
+        }
+        
+        async function checkInactivity() {
+            const now = new Date();
+            const inactiveSeconds = Math.floor((now - lastActivity) / 1000);
+            const timeoutSeconds = timeoutMinutes * 60;
+            
+            // Avertissement à 30 secondes avant la déconnexion
+            if (inactiveSeconds >= timeoutSeconds - 30 && inactiveSeconds < timeoutSeconds) {
+                showInactivityWarning(timeoutSeconds - inactiveSeconds);
+            }
+            
+            // Déconnexion automatique
+            if (inactiveSeconds >= timeoutSeconds) {
+                await autoDisconnect();
+            }
+        }
+        
+        function showInactivityWarning(secondsLeft) {
+            const warning = document.getElementById('inactivity-warning');
+            warning.classList.add('active');
+            
+            document.getElementById('warning-countdown').textContent = secondsLeft;
+            document.getElementById('seconds-left').textContent = secondsLeft;
+            
+            // Mettre à jour le compte à rebours chaque seconde
+            if (warningTimer) clearInterval(warningTimer);
+            
+            warningTimer = setInterval(() => {
+                secondsLeft--;
+                document.getElementById('warning-countdown').textContent = secondsLeft;
+                document.getElementById('seconds-left').textContent = secondsLeft;
+                
+                if (secondsLeft <= 0) {
+                    clearInterval(warningTimer);
+                }
+            }, 1000);
+        }
+        
+        function resetInactivityTimer() {
+            recordActivity();
+            document.getElementById('inactivity-warning').classList.remove('active');
+            if (warningTimer) clearInterval(warningTimer);
+        }
+        
+        async function autoDisconnect() {
+            clearInterval(activityCheckInterval);
+            if (warningTimer) clearInterval(warningTimer);
+            
+            await endSession('Auto (inactivité)');
+            
+            alert('⏱️ DÉCONNEXION AUTOMATIQUE\n\nVous avez été déconnecté en raison d\'une inactivité prolongée.\n\nVotre session a été enregistrée.');
+            
+            logout(false); // Ne pas enregistrer à nouveau
+        }
+        
+        // ============ AUTHENTIFICATION ============
+        
+        async function handleLogin(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+            
+            // Vérifier si le site est occupé
+            const activeSession = await checkIfSiteOccupied();
+            
+            if (activeSession) {
+                // Site occupé !
+                showSiteLocked(activeSession);
+                return;
+            }
+            
+            // Premier utilisateur : création compte admin
+            if (users.length === 0) {
+                const newUser = {
+                    id: Date.now().toString(),
+                    username: username,
+                    password: password,
+                    role: 'ADMIN',
+                    createdAt: new Date().toISOString()
+                };
+                
+                // Créer dans SharePoint
+                await createListItem(SHAREPOINT_CONFIG.listsNames.users, {
+                    Title: username,
+                    MotDePasse: password,
+                    Role: 'ADMIN',
+                    DateCreation: new Date().toISOString()
+                });
+                
+                users.push(newUser);
+                currentUser = newUser;
+                
+                await createSession(username);
+                startSession();
+                return;
+            }
+            
+            // Connexion utilisateur existant
+            const user = users.find(u => u.username === username && u.password === password);
+            
+            if (user) {
+                currentUser = user;
+                await createSession(username);
+                startSession();
+            } else {
+                showLoginError('Nom d\'utilisateur ou mot de passe incorrect');
+            }
+        }
+        
+        function showSiteLocked(session) {
+            document.getElementById('locked-user').textContent = session.UtilisateurConnecte;
+            
+            const connectedSince = new Date(session.DateHeureConnexion);
+            const now = new Date();
+            const minutes = Math.floor((now - connectedSince) / 1000 / 60);
+            
+            document.getElementById('locked-duration').textContent = `${minutes} minute(s)`;
+            document.getElementById('site-locked-modal').classList.add('active');
+        }
+        
+        function retryConnection() {
+            document.getElementById('site-locked-modal').classList.remove('active');
+            // Relancer le processus de connexion
+            document.getElementById('login-form').dispatchEvent(new Event('submit'));
+        }
+        
+        function startSession() {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('main-app').classList.add('active');
+            document.getElementById('site-locked-modal').classList.remove('active');
+            
+            document.getElementById('current-user-name').textContent = currentUser.username;
+            document.getElementById('current-user-role').textContent = currentUser.role;
+            
+            if (currentUser.role === 'TECHNICIEN') {
+                document.getElementById('settings-tab').style.display = 'none';
+            }
+            
+            // Démarrer le monitoring d'inactivité
+            startInactivityMonitoring();
+            
+            // Charger les paramètres
+            loadSettings();
+        }
+        
+        async function logout(saveSession = true) {
+            if (saveSession) {
+                await endSession('Manuelle');
+            }
+            
+            clearInterval(activityCheckInterval);
+            if (warningTimer) clearInterval(warningTimer);
+            
+            currentUser = null;
+            sessionToken = null;
+            
+            document.getElementById('main-app').classList.remove('active');
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('login-username').value = '';
+            document.getElementById('login-password').value = '';
+        }
+        
+        function showLoginError(message) {
+            const errorDiv = document.getElementById('login-error');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+            setTimeout(() => errorDiv.classList.remove('show'), 3000);
+        }
+        
+        // ============ PARAMÈTRES ============
+        
+        async function loadSettings() {
+            try {
+                const params = await getListItems(SHAREPOINT_CONFIG.listsNames.parameters);
+                if (params.length > 0) {
+                    timeoutMinutes = params[0].TempsDeconnexionAuto || 5;
+                    document.getElementById('timeout-setting').value = timeoutMinutes;
+                }
+            } catch (error) {
+                console.error('Erreur chargement paramètres:', error);
+            }
+        }
+        
+        async function saveSettings() {
+            try {
+                const newTimeout = parseInt(document.getElementById('timeout-setting').value);
+                
+                const params = await getListItems(SHAREPOINT_CONFIG.listsNames.parameters);
+                
+                if (params.length > 0) {
+                    await updateListItem(SHAREPOINT_CONFIG.listsNames.parameters, params[0].ID, {
+                        TempsDeconnexionAuto: newTimeout
+                    });
+                } else {
+                    await createListItem(SHAREPOINT_CONFIG.listsNames.parameters, {
+                        Title: 'Configuration',
+                        TempsDeconnexionAuto: newTimeout
+                    });
+                }
+                
+                timeoutMinutes = newTimeout;
+                alert('✅ Paramètres enregistrés avec succès !');
+            } catch (error) {
+                console.error('Erreur sauvegarde paramètres:', error);
+                alert('❌ Erreur lors de la sauvegarde');
+            }
+        }
+        
+        async function forceDisconnect() {
+            if (!confirm('⚠️ Voulez-vous vraiment forcer la déconnexion de l\'utilisateur actuel ?\n\nCette action déconnectera immédiatement l\'utilisateur.')) {
+                return;
+            }
+            
+            try {
+                await endSession('Forcée par admin');
+                alert('✅ Utilisateur déconnecté avec succès');
+            } catch (error) {
+                alert('❌ Erreur lors de la déconnexion forcée');
+            }
+        }
+        
+        async function exportSessionHistory() {
+            try {
+                const history = await getListItems(SHAREPOINT_CONFIG.listsNames.sessionHistory, null, null, 'DateConnexion desc');
+                
+                if (history.length === 0) {
+                    alert('Aucun historique à exporter');
+                    return;
+                }
+                
+                let csv = 'Date,Heure,Utilisateur,Durée (min),Type déconnexion\n';
+                
+                history.forEach(h => {
+                    const date = new Date(h.DateConnexion);
+                    csv += `${date.toLocaleDateString('fr-FR')},${date.toLocaleTimeString('fr-FR')},"${h.Title}",${h.DureeSession},"${h.TypeDeconnexion}"\n`;
+                });
+                
+                const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `historique-sessions-${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                alert('❌ Erreur lors de l\'export');
+            }
+        }
+        
+        // ============ UTILITAIRES ============
+        
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+        
+        function switchTab(tabName) {
+            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
+        
+        function updateLoadingStatus(message) {
+            document.getElementById('loading-status').textContent = message;
+        }
+        
+        // ============ CHARGEMENT INITIAL ============
+        
+        async function loadAllData() {
+            try {
+                updateLoadingStatus('Chargement des utilisateurs...');
+                const usersData = await getListItems(SHAREPOINT_CONFIG.listsNames.users);
+                users = usersData.map(u => ({
+                    id: u.ID.toString(),
+                    username: u.Title,
+                    password: u.MotDePasse,
+                    role: u.Role,
+                    createdAt: u.DateCreation
+                }));
+                
+                console.log('✅ Données chargées depuis SharePoint');
+                return true;
+            } catch (error) {
+                console.error('❌ Erreur chargement SharePoint:', error);
+                alert('Erreur de connexion à SharePoint. Vérifiez les listes et les permissions.');
+                return false;
+            }
+        }
+        
+        async function initializeApp() {
+            document.getElementById('loading-screen').classList.remove('hidden');
+            
+            const success = await loadAllData();
+            
+            if (success) {
+                document.getElementById('loading-screen').classList.add('hidden');
+                
+                if (users.length === 0) {
+                    document.getElementById('first-time-notice').style.display = 'block';
+                    document.getElementById('role-group').style.display = 'block';
+                    document.getElementById('login-btn-text').textContent = 'Créer mon compte administrateur';
+                }
+                
+                document.getElementById('login-screen').classList.remove('hidden');
+            } else {
+                document.getElementById('loading-screen').innerHTML = `
+                    <div style="text-align: center; color: white;">
+                        <h2>❌ Erreur de connexion à SharePoint</h2>
+                        <p style="margin-top: 1rem;">Vérifiez que les listes SharePoint existent.</p>
+                        <button onclick="location.reload()" style="margin-top: 2rem; padding: 1rem 2rem; background: white; color: var(--primary); border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                            🔄 Réessayer
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        // Démarrage
+        document.addEventListener('DOMContentLoaded', initializeApp);
+        
+        // Protection fermeture d'onglet/page
+        window.addEventListener('beforeunload', (e) => {
+            if (currentUser) {
+                // Demander confirmation
+                e.preventDefault();
+                e.returnValue = '⚠️ ATTENTION : Vous êtes connecté !\n\nSi vous fermez maintenant, le site restera verrouillé pendant 5 minutes.\n\nUtilisez plutôt le bouton "Déconnexion" en haut à droite.';
+                
+                return e.returnValue;
+            }
+        });
+        
+        // Tentative de nettoyage de session lors de la fermeture forcée
+        // (ne déclenche PAS de confirmation, juste nettoie en arrière-plan)
+        window.addEventListener('pagehide', async (e) => {
+            if (currentUser) {
+                // Marquer la session comme "fermée anormalement"
+                try {
+                    await endSession('Fermeture navigateur');
+                } catch (error) {
+                    console.error('Erreur nettoyage session:', error);
+                }
+            }
+        });
+        
+        // Détection onglet caché (l'utilisateur change d'onglet ou minimise)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && currentUser) {
+                // Mettre à jour l'activité pour indiquer qu'on est en arrière-plan
+                updateLastActivity();
+            }
+        });
+    </script>
+</body>
+</html>
